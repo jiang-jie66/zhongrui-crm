@@ -48,7 +48,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       }}
       bodyStyle={{ padding: isMobile ? 20 : 32 }}>
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <img src="/logo.png" alt="中睿智能" style={{
+          <img src="/logo-color.png" alt="中睿智能" style={{
             width: isMobile ? 64 : 80,
             height: 'auto',
             margin: '0 auto 16px',
