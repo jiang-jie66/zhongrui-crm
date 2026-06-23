@@ -33,12 +33,16 @@ function writeJson<T>(file: string, data: T[]) {
 }
 
 // ============ 用户操作 ============
+// 三级角色：super_admin(总管理员) > sub_admin(副管理员) > sales(销售)
+export type UserRole = 'super_admin' | 'sub_admin' | 'sales';
+
 export interface User {
   id: number;
   username: string;
   password: string;
   name: string;
-  role: 'admin' | 'sales';
+  role: UserRole;
+  parent_id: number | null;  // 上级用户ID（副管理员的上级是总管理员，销售的上级是副管理员）
   phone?: string;
   created_at: string;
 }
@@ -71,7 +75,48 @@ export function createUser(user: Omit<User, 'id' | 'created_at'>): User {
   return newUser;
 }
 
-// 初始化默认管理员
+// 获取某用户的下属ID列表（递归，含所有下级）
+export function getSubordinateIds(userId: number): number[] {
+  const users = getUsers();
+  const result: number[] = [];
+  const directSubs = users.filter(u => u.parent_id === userId).map(u => u.id);
+  result.push(...directSubs);
+  for (const subId of directSubs) {
+    result.push(...getSubordinateIds(subId));
+  }
+  return result;
+}
+
+// 获取某用户的直属下属用户列表
+export function getDirectSubordinates(userId: number): User[] {
+  return getUsers().filter(u => u.parent_id === userId);
+}
+
+// 获取某用户可见的所有用户（自己 + 所有下级）
+export function getVisibleUserIds(userId: number, role: UserRole): number[] {
+  if (role === 'super_admin') {
+    return getUsers().map(u => u.id);
+  }
+  if (role === 'sub_admin') {
+    return [userId, ...getSubordinateIds(userId)];
+  }
+  // sales 只能看到自己
+  return [userId];
+}
+
+// 检查操作者是否有权限管理目标用户
+export function canManageUser(operatorId: number, operatorRole: UserRole, targetId: number): boolean {
+  if (operatorRole === 'super_admin') return true;
+  if (operatorRole === 'sub_admin') {
+    const target = findUserById(targetId);
+    if (!target) return false;
+    // 副管理员只能管理自己的下属销售
+    return target.parent_id === operatorId && target.role === 'sales';
+  }
+  return false;
+}
+
+// 初始化默认总管理员
 export function initDefaultAdmin() {
   const users = getUsers();
   if (!users.find(u => u.username === 'admin')) {
@@ -80,12 +125,27 @@ export function initDefaultAdmin() {
       id: 1,
       username: 'admin',
       password: hash,
-      name: '系统管理员',
-      role: 'admin',
+      name: '总管理员',
+      role: 'super_admin',
+      parent_id: null,
       created_at: new Date().toISOString(),
     });
     saveUsers(users);
-    console.log('✅ 默认管理员账号已创建: admin / admin123');
+    console.log('✅ 默认总管理员账号已创建: admin / admin123');
+  } else {
+    // 迁移旧数据：如果存在旧 admin 角色，升级为 super_admin
+    let migrated = false;
+    for (const u of users) {
+      if ((u.role as string) === 'admin') {
+        u.role = 'super_admin';
+        if (u.parent_id === undefined) u.parent_id = null;
+        migrated = true;
+      }
+    }
+    if (migrated) {
+      saveUsers(users);
+      console.log('✅ 已将旧管理员角色迁移为 super_admin');
+    }
   }
 }
 
@@ -94,6 +154,11 @@ export function deleteUserById(userId: number): boolean {
   const users = getUsers();
   const idx = users.findIndex(u => u.id === userId);
   if (idx === -1) return false;
+  // 如果有下属，将其 parent_id 置空
+  const subordinates = users.filter(u => u.parent_id === userId);
+  for (const sub of subordinates) {
+    sub.parent_id = null;
+  }
   users.splice(idx, 1);
   saveUsers(users);
 
