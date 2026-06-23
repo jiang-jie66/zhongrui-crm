@@ -47,7 +47,7 @@ const OpportunityDetail: React.FC = () => {
   }, [id, form]);
 
   useEffect(() => {
-    if (user.role === 'admin') {
+    if (['super_admin', 'sub_admin', 'admin'].includes(user.role)) {
       request.get('/auth/sales').then((res: any) => {
         setSalesList(res.data.data || []);
       }).catch(() => {});
@@ -56,7 +56,7 @@ const OpportunityDetail: React.FC = () => {
 
   useEffect(() => { fetchDetail(); }, [fetchDetail]);
 
-  const canEdit = user.role === 'admin' || (user.role === 'sales' && opp?.sales_id === user.id);
+  const canEdit = ['super_admin', 'sub_admin', 'admin'].includes(user.role) || (user.role === 'sales' && opp?.sales_id === user.id);
 
   const handleUpdate = async () => {
     const values = await form.validateFields();
@@ -94,7 +94,7 @@ const OpportunityDetail: React.FC = () => {
         title={<span style={{ fontSize: isMobile ? 15 : 16 }}>基本信息</span>}
         extra={
           <Space>
-            {!editMode && user.role === 'admin' && opp.sales_name && (
+            {!editMode && ['super_admin', 'sub_admin', 'admin'].includes(user.role) && opp.sales_name && (
               <Button icon={<SwapOutlined />} size="small" onClick={() => setReassignModalVisible(true)}>
                 {!isMobile && '转交销售'}
               </Button>
@@ -106,7 +106,7 @@ const OpportunityDetail: React.FC = () => {
         }
         style={{ marginBottom: isMobile ? 12 : 16 }}
       >
-        {editMode && user.role === 'admin' ? (
+        {editMode && ['super_admin', 'sub_admin', 'admin'].includes(user.role) ? (
           <Form form={form} layout="vertical" style={{ maxWidth: isMobile ? '100%' : 600 }}
             size={isMobile ? 'middle' : 'large'}>
             <Form.Item name="company_name" label="公司名称" rules={[{ required: true }]}>
@@ -125,7 +125,7 @@ const OpportunityDetail: React.FC = () => {
                 getPopupContainer={t => t.parentElement || document.body} />
             </Form.Item>
             <Form.Item name="deal_amount" label="成单金额（元）"><Input type="number" /></Form.Item>
-            {user.role === 'admin' && (
+            {['super_admin', 'sub_admin', 'admin'].includes(user.role) && (
               <Form.Item name="sales_id" label="分配销售">
                 <Select placeholder="选择销售负责人" allowClear
                   options={salesList.map(s => ({ value: s.id, label: s.name }))}
