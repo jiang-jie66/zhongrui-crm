@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import { generateToken, authMiddleware, adminOnly } from '../middleware/auth.js';
 import {
   findUserByUsername, createUser, findUserById, getUsers,
-  updateUserPassword, addOperationLog, getOperationLogs, type User
+  updateUserPassword, deleteUserById, addOperationLog, getOperationLogs, type User
 } from '../db/jsonDb.js';
 
 const router = Router();
@@ -60,6 +60,33 @@ router.get('/sales', authMiddleware, adminOnly, (req: Request, res: Response) =>
     id: u.id, username: u.username, name: u.name, phone: u.phone || ''
   }));
   res.json({ code: 0, data: sales });
+});
+
+// 删除用户（仅管理员，不可删除自己和管理员）
+router.delete('/:id', authMiddleware, adminOnly, (req: Request, res: Response) => {
+  const operator = (req as any).user;
+  const targetId = parseInt(req.params.id);
+  if (targetId === operator.id) {
+    return res.status(400).json({ code: 400, message: '不能删除自己的账号' });
+  }
+  const targetUser = findUserById(targetId);
+  if (!targetUser) {
+    return res.status(404).json({ code: 404, message: '目标用户不存在' });
+  }
+  if (targetUser.role === 'admin') {
+    return res.status(400).json({ code: 400, message: '不能删除管理员账号' });
+  }
+  deleteUserById(targetId);
+  addOperationLog({
+    operator_id: operator.id,
+    operator_name: operator.name,
+    operator_role: operator.role,
+    action: '删除用户',
+    target_user_id: targetId,
+    target_user_name: targetUser.name,
+    detail: `管理员 ${operator.name} 删除了销售账号 ${targetUser.name}（${targetUser.username}）`,
+  });
+  res.json({ code: 0, message: `已成功删除销售账号 ${targetUser.name}` });
 });
 
 // 修改自己的密码（需验证旧密码）

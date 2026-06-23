@@ -89,6 +89,29 @@ export function initDefaultAdmin() {
   }
 }
 
+// 删除用户
+export function deleteUserById(userId: number): boolean {
+  const users = getUsers();
+  const idx = users.findIndex(u => u.id === userId);
+  if (idx === -1) return false;
+  users.splice(idx, 1);
+  saveUsers(users);
+
+  // 将该用户的商机 sales_id 置空
+  const ops = getOpportunities();
+  let changed = false;
+  for (const o of ops) {
+    if (o.sales_id === userId) {
+      o.sales_id = null;
+      o.updated_at = new Date().toISOString();
+      changed = true;
+    }
+  }
+  if (changed) saveOpportunities(ops);
+
+  return true;
+}
+
 // 更新用户密码
 export function updateUserPassword(userId: number, newPassword: string): boolean {
   const users = getUsers();

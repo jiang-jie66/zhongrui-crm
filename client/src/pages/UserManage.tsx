@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Button, Modal, Form, Input, message, Space, Tag, Popconfirm } from 'antd';
-import { PlusOutlined, ReloadOutlined, KeyOutlined } from '@ant-design/icons';
+import { PlusOutlined, ReloadOutlined, KeyOutlined, DeleteOutlined } from '@ant-design/icons';
 import request from '../utils/request';
 import { validatePassword } from '../utils/validate';
 
@@ -52,6 +52,12 @@ const UserManage: React.FC = () => {
     }
   };
 
+  const handleDelete = async (record: any) => {
+    await request.delete(`/auth/${record.id}`);
+    message.success(`已成功删除销售账号 ${record.name}`);
+    fetchSales();
+  };
+
   const columns = [
     { title: '用户名', dataIndex: 'username', key: 'username' },
     { title: '姓名', dataIndex: 'name', key: 'name' },
@@ -59,7 +65,15 @@ const UserManage: React.FC = () => {
     { title: '角色', key: 'role', render: () => <Tag color="blue">销售</Tag> },
     {
       title: '操作', key: 'action', render: (_: any, record: any) => (
-        <Button type="link" icon={<KeyOutlined />} onClick={() => openResetModal(record)}>重置密码</Button>
+        <Space>
+          <Button type="link" icon={<KeyOutlined />} onClick={() => openResetModal(record)}>重置密码</Button>
+          <Popconfirm title={`确定删除销售账号「${record.name}」吗？`}
+            description="删除后该销售关联的商机将取消分配。此操作不可撤销！"
+            onConfirm={() => handleDelete(record)} okText="确认删除" cancelText="取消"
+            okButtonProps={{ danger: true }}>
+            <Button type="link" danger icon={<DeleteOutlined />}>删除</Button>
+          </Popconfirm>
+        </Space>
       ),
     },
   ];
