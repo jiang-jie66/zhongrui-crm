@@ -76,7 +76,7 @@ router.post('/login', (req: Request, res: Response) => {
   }
   const user = findUserByUsername(username);
   if (!user || !bcrypt.compareSync(password, user.password)) {
-    return res.status(401).json({ code: 401, message: '用户名或密码错误' });
+    return res.status(400).json({ code: 400, message: '用户名或密码错误' });
   }
   const token = generateToken({
     id: user.id, username: user.username, name: user.name, role: user.role,
