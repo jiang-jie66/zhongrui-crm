@@ -119,32 +119,35 @@ function App() {
         height: isMobile ? 48 : 64, lineHeight: isMobile ? '48px' : '64px',
         position: 'sticky', top: 0, zIndex: 100, width: '100%',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {/* 移动端：菜单按钮 */}
+        {/* 左侧：菜单按钮 + Logo */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: '0 0 auto' }}>
           {isMobile && (
             <Button type="text" icon={<MenuOutlined />} onClick={() => setDrawerOpen(true)}
               style={{ color: '#fff', fontSize: 20, padding: '0 4px' }} />
           )}
-          {/* 平板/桌面端：折叠按钮 */}
           {!isMobile && (
             <Button type="text" icon={<MenuFoldOutlined />} onClick={() => setSiderCollapsed(!siderCollapsed)}
               style={{ color: '#fff', fontSize: 18, padding: '0 4px' }} />
           )}
-          <span className="header-title" style={{
-            color: '#fff', fontSize: isMobile ? 13 : 18, fontWeight: 600,
-            whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 8,
-          }}>
-            <img src="/logo.png" alt="中睿" style={{
-              height: isMobile ? 26 : 32,
-              width: 'auto',
-              display: 'inline-block',
-              verticalAlign: 'middle',
-            }} />
-            中睿智能商机管理系统
-          </span>
+          <img src="/logo.png" alt="中睿" style={{
+            height: isMobile ? 26 : 32,
+            width: 'auto',
+            display: 'inline-block',
+            verticalAlign: 'middle',
+          }} />
         </div>
 
-        {/* 用户信息 */}
+        {/* 中间：系统标题（绝对定位居中） */}
+        {!isMobile && (
+          <span style={{
+            position: 'absolute', left: '50%', transform: 'translateX(-50%)',
+            color: '#fff', fontSize: 18, fontWeight: 600, whiteSpace: 'nowrap',
+          }}>
+            中睿智能商机管理系统
+          </span>
+        )}
+
+        {/* 右侧：用户信息 */}
         <Dropdown menu={{ items: userMenu, onClick: ({ key }) => {
           if (key === 'logout') handleLogout();
           if (key === 'changePassword') setPwdModalVisible(true);
