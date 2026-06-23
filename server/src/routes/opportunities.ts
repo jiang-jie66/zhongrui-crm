@@ -104,17 +104,20 @@ router.get('/:id', authMiddleware, (req: Request, res: Response) => {
   });
 });
 
-// 创建商机（管理员及以上）
-router.post('/', authMiddleware, adminOnly, (req: Request, res: Response) => {
+// 创建商机（所有已登录用户均可创建）
+router.post('/', authMiddleware, (req: Request, res: Response) => {
   const { company_name, contact_name, contact_phone, industry, source, sales_id, remark } = req.body;
   if (!company_name || !contact_name || !contact_phone) {
     return res.status(400).json({ code: 400, message: '公司名称、联系人姓名和联系电话为必填项' });
   }
   const user = (req as any).user;
 
-  // 副管理员只能分配给自己的下属
+  // 销售人员创建商机时，自动分配给自己
   let finalSalesId = sales_id ? Number(sales_id) : null;
-  if (user.role === 'sub_admin' && finalSalesId) {
+  if (user.role === 'sales') {
+    finalSalesId = user.id;
+  } else if (user.role === 'sub_admin' && finalSalesId) {
+    // 副管理员只能分配给自己的下属
     const subIds = getSubordinateIds(user.id);
     if (!subIds.includes(finalSalesId)) {
       return res.status(403).json({ code: 403, message: '只能将商机分配给您的下属销售' });
