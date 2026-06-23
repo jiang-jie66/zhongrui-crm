@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
-import { message, Layout, Menu, Avatar, Dropdown, theme, Modal, Form, Input } from 'antd';
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { message, Layout, Menu, Avatar, Dropdown, Button, Drawer, Modal, Form, Input, Grid } from 'antd';
 import type { MenuProps } from 'antd';
 import {
   DashboardOutlined, ProjectOutlined, BarChartOutlined, UserOutlined, LogoutOutlined, KeyOutlined,
-  UnorderedListOutlined,
+  UnorderedListOutlined, MenuOutlined, MenuFoldOutlined,
 } from '@ant-design/icons';
-import zhCN from 'antd/locale/zh_CN';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import OpportunityList from './pages/OpportunityList';
@@ -19,6 +18,7 @@ import { validatePassword } from './utils/validate';
 import type { User } from './types';
 
 const { Header, Content, Sider } = Layout;
+const { useBreakpoint } = Grid;
 
 function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -26,7 +26,21 @@ function App() {
   const [pwdModalVisible, setPwdModalVisible] = useState(false);
   const [pwdForm] = Form.useForm();
   const [pwdLoading, setPwdLoading] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [siderCollapsed, setSiderCollapsed] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const screens = useBreakpoint();
+
+  // 响应式断点判断：移动端 < 768px
+  const isMobile = !screens.md;
+  const isTablet = screens.md && !screens.lg;
+  const isDesktop = !!screens.lg;
+
+  // 路由变化时关闭移动端抽屉
+  useEffect(() => {
+    setDrawerOpen(false);
+  }, [location.pathname]);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -64,7 +78,7 @@ function App() {
     }
   };
 
-  if (loading) return <div style={{ textAlign: 'center', marginTop: 100 }}>加载中...</div>;
+  if (loading) return <div style={{ textAlign: 'center', marginTop: 100, fontSize: 16, color: '#999' }}>加载中...</div>;
   if (!user) return (
     <Routes>
       <Route path="/login" element={<Login onLogin={setUser} />} />
@@ -85,27 +99,107 @@ function App() {
     { key: 'logout', icon: <LogoutOutlined />, label: '退出登录' },
   ];
 
+  // 共享的菜单组件
+  const renderMenu = (mode: 'inline' | 'vertical' = 'inline') => (
+    <Menu
+      mode={mode}
+      selectedKeys={[location.pathname]}
+      items={menuItems}
+      onClick={({ key }) => { navigate(key); setDrawerOpen(false); }}
+      style={{ borderRight: 0 }}
+    />
+  );
+
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#001529' }}>
-        <div style={{ color: '#fff', fontSize: 18, fontWeight: 600 }}>中睿智能商机管理系统</div>
+      {/* ===== 顶部导航栏 ===== */}
+      <Header className="app-header" style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        background: '#001529', padding: isMobile ? '0 12px' : '0 24px',
+        height: isMobile ? 48 : 64, lineHeight: isMobile ? '48px' : '64px',
+        position: 'sticky', top: 0, zIndex: 100, width: '100%',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {/* 移动端：菜单按钮 */}
+          {isMobile && (
+            <Button type="text" icon={<MenuOutlined />} onClick={() => setDrawerOpen(true)}
+              style={{ color: '#fff', fontSize: 20, padding: '0 4px' }} />
+          )}
+          {/* 平板/桌面端：折叠按钮 */}
+          {!isMobile && (
+            <Button type="text" icon={<MenuFoldOutlined />} onClick={() => setSiderCollapsed(!siderCollapsed)}
+              style={{ color: '#fff', fontSize: 18, padding: '0 4px' }} />
+          )}
+          <span className="header-title" style={{
+            color: '#fff', fontSize: isMobile ? 13 : 18, fontWeight: 600,
+            whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 8,
+          }}>
+            <img src="/logo.png" alt="中睿" style={{
+              height: isMobile ? 26 : 32,
+              width: 'auto',
+              display: 'inline-block',
+              verticalAlign: 'middle',
+            }} />
+            中睿智能商机管理系统
+          </span>
+        </div>
+
+        {/* 用户信息 */}
         <Dropdown menu={{ items: userMenu, onClick: ({ key }) => {
           if (key === 'logout') handleLogout();
           if (key === 'changePassword') setPwdModalVisible(true);
         }}} placement="bottomRight">
           <div style={{ color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Avatar icon={<UserOutlined />} style={{ backgroundColor: '#1677ff' }} />
-            {user.name}（{user.role === 'admin' ? '管理员' : '销售'}）
+            <Avatar icon={<UserOutlined />} style={{ backgroundColor: '#1677ff' }} size={isMobile ? 'small' : 'default'} />
+            {isMobile ? (
+              <span style={{ fontSize: 13 }}>{user.name}</span>
+            ) : (
+              <span>{user.name}（{user.role === 'admin' ? '管理员' : '销售'}）</span>
+            )}
           </div>
         </Dropdown>
       </Header>
+
       <Layout>
-        <Sider width={200} style={{ background: '#fff' }}>
-          <Menu mode="inline" selectedKeys={[window.location.pathname]} items={menuItems}
-            onClick={({ key }) => navigate(key)} style={{ height: '100%', borderRight: 0 }} />
-        </Sider>
-        <Layout style={{ padding: '16px 24px' }}>
-          <Content style={{ background: '#f5f5f5', minHeight: 280 }}>
+        {/* ===== 桌面端/平板端：侧边栏 ===== */}
+        {!isMobile && (
+          <Sider
+            width={siderCollapsed ? 80 : 200}
+            collapsible
+            collapsed={siderCollapsed}
+            trigger={null}
+            breakpoint="lg"
+            style={{ background: '#fff' }}
+          >
+            {renderMenu('inline')}
+          </Sider>
+        )}
+
+        {/* ===== 移动端：抽屉菜单 ===== */}
+        {isMobile && (
+          <Drawer
+            title="导航菜单"
+            placement="left"
+            width={260}
+            open={drawerOpen}
+            onClose={() => setDrawerOpen(false)}
+            className="mobile-drawer"
+            styles={{ body: { padding: 0 } }}
+          >
+            {renderMenu('vertical')}
+          </Drawer>
+        )}
+
+        {/* ===== 内容区域 ===== */}
+        <Layout className="app-layout-inner" style={{
+          padding: isMobile ? '8px' : isTablet ? '12px 16px' : '16px 24px',
+        }}>
+          <Content className="app-layout-content" style={{
+            background: '#f5f5f5',
+            minHeight: 280,
+            borderRadius: isMobile ? 8 : 0,
+            padding: isMobile ? 8 : 0,
+          }}>
             <Routes>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/opportunities" element={<OpportunityList />} />
@@ -118,8 +212,12 @@ function App() {
           </Content>
         </Layout>
       </Layout>
-      <Modal title="修改密码" open={pwdModalVisible} onCancel={() => { setPwdModalVisible(false); pwdForm.resetFields(); }}
-        onOk={handleChangePassword} confirmLoading={pwdLoading} okText="确认修改" cancelText="取消" width={450}>
+
+      {/* ===== 修改密码弹窗 ===== */}
+      <Modal title="修改密码" open={pwdModalVisible}
+        onCancel={() => { setPwdModalVisible(false); pwdForm.resetFields(); }}
+        onOk={handleChangePassword} confirmLoading={pwdLoading} okText="确认修改" cancelText="取消"
+        width={isMobile ? undefined : 450}>
         <Form form={pwdForm} layout="vertical" style={{ marginTop: 16 }}>
           <Form.Item name="oldPassword" label="旧密码" rules={[{ required: true, message: '请输入旧密码' }]}>
             <Input.Password placeholder="请输入当前密码" />
