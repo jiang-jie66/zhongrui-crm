@@ -86,12 +86,26 @@ function App() {
     </Routes>
   );
 
+  // 检查是否为管理员（总管理员或副管理员）
+  const isAdmin = user.role === 'super_admin' || user.role === 'sub_admin' || user.role === 'admin';
+  // 检查是否为总管理员
+  const isSuperAdmin = user.role === 'super_admin' || user.role === 'admin';
+
+  // 角色中文显示
+  const roleLabel = (role: string) => {
+    const map: Record<string, string> = {
+      super_admin: '总管理员', admin: '总管理员',
+      sub_admin: '副管理员', sales: '销售',
+    };
+    return map[role] || role;
+  };
+
   const menuItems: MenuProps['items'] = [
     { key: '/dashboard', icon: <DashboardOutlined />, label: '工作台' },
     { key: '/opportunities', icon: <ProjectOutlined />, label: '商机管理' },
-    user.role === 'admin' ? { key: '/analytics', icon: <BarChartOutlined />, label: '数据分析' } : null,
-    user.role === 'admin' ? { key: '/logs', icon: <UnorderedListOutlined />, label: '操作日志' } : null,
-    user.role === 'admin' ? { key: '/users', icon: <UserOutlined />, label: '用户管理' } : null,
+    isAdmin ? { key: '/analytics', icon: <BarChartOutlined />, label: '数据分析' } : null,
+    isAdmin ? { key: '/logs', icon: <UnorderedListOutlined />, label: '操作日志' } : null,
+    isAdmin ? { key: '/users', icon: <UserOutlined />, label: '用户管理' } : null,
   ].filter(Boolean) as MenuProps['items'];
 
   const userMenu: MenuProps['items'] = [
@@ -157,7 +171,7 @@ function App() {
             {isMobile ? (
               <span style={{ fontSize: 13 }}>{user.name}</span>
             ) : (
-              <span>{user.name}（{user.role === 'admin' ? '管理员' : '销售'}）</span>
+              <span>{user.name}（{roleLabel(user.role)}）</span>
             )}
           </div>
         </Dropdown>
@@ -207,9 +221,9 @@ function App() {
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/opportunities" element={<OpportunityList />} />
               <Route path="/opportunities/:id" element={<OpportunityDetail />} />
-              {user.role === 'admin' && <Route path="/analytics" element={<Analytics />} />}
-              {user.role === 'admin' && <Route path="/users" element={<UserManage />} />}
-              {user.role === 'admin' && <Route path="/logs" element={<OperationLogs />} />}
+              {isAdmin && <Route path="/analytics" element={<Analytics />} />}
+              {isAdmin && <Route path="/users" element={<UserManage />} />}
+              {isAdmin && <Route path="/logs" element={<OperationLogs />} />}
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
           </Content>
