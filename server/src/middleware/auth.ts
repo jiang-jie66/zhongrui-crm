@@ -24,7 +24,7 @@ export function generateToken(payload: { id: number; username: string; name: str
   return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
 }
 
-// 验证中间件
+// 验证中间件（所有已登录用户）
 export function authMiddleware(req: Request, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -39,10 +39,20 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
   }
 }
 
-// 管理员权限中间件
+// 管理员及以上权限（副管理员 + 总管理员）
 export function adminOnly(req: Request, res: Response, next: NextFunction) {
-  if ((req as any).user?.role !== 'admin') {
+  const role = (req as any).user?.role;
+  if (role !== 'super_admin' && role !== 'sub_admin' && role !== 'admin') {
     return res.status(403).json({ code: 403, message: '无权操作，仅管理员可访问' });
+  }
+  next();
+}
+
+// 仅总管理员权限
+export function superAdminOnly(req: Request, res: Response, next: NextFunction) {
+  const role = (req as any).user?.role;
+  if (role !== 'super_admin' && role !== 'admin') {
+    return res.status(403).json({ code: 403, message: '无权操作，仅总管理员可访问' });
   }
   next();
 }
