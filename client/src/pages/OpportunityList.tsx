@@ -118,7 +118,7 @@ const OpportunityList: React.FC = () => {
       responsive: ['sm' as const],
       width: isMobile ? 100 : 150,
     },
-    user.role === 'admin' ? {
+    ['super_admin', 'sub_admin', 'admin'].includes(user.role) ? {
       title: '操作', key: 'action', width: 60, fixed: 'right' as const,
       render: (_: any, record: Opportunity) => (
         <Button type="link" icon={<SwapOutlined />} onClick={() => openReassignModal(record)} size="small" />
@@ -148,7 +148,7 @@ const OpportunityList: React.FC = () => {
           <Button icon={<ReloadOutlined />} onClick={() => fetchData()} style={isMobile ? { width: '100%' } : undefined}>
             刷新
           </Button>
-          {user.role === 'admin' && (
+          {['super_admin', 'sub_admin', 'admin'].includes(user.role) && (
             <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateModalVisible(true)}
               style={isMobile ? { width: '100%' } : undefined} block={isMobile}>
               新建商机
