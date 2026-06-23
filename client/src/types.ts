@@ -2,7 +2,7 @@ export interface User {
   id: number;
   username: string;
   name: string;
-  role: 'admin' | 'sales';
+  role: 'super_admin' | 'sub_admin' | 'admin' | 'sales';
   phone?: string;
 }
 
