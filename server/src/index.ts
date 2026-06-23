@@ -3,7 +3,6 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -43,7 +42,10 @@ app.get('*', (req, res, next) => {
   });
 });
 
-app.listen(PORT, () => {
+const LAN_IP = '192.168.49.67';
+
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 中睿智能商机管理系统已启动，端口: ${PORT}`);
-  console.log(`🌐 访问地址: http://localhost:${PORT}`);
+  console.log(`🌐 本机访问: http://localhost:${PORT}`);
+  console.log(`🌐 局域网访问: http://${LAN_IP}:${PORT}`);
 });
