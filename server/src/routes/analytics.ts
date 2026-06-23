@@ -1,19 +1,32 @@
 import { Router, type Request, type Response } from 'express';
 import { authMiddleware, adminOnly } from '../middleware/auth.js';
 import {
-  getOpportunities, getFollowups, getUsers,
+  getOpportunities, getFollowups, getUsers, getSubordinateIds,
 } from '../db/jsonDb.js';
 import dayjs from 'dayjs';
 
 const router = Router();
 
+// 辅助：按角色过滤可见商机
+function filterByRole(ops: any[], user: any) {
+  if (user.role === 'sales') {
+    return ops.filter(o => o.sales_id === user.id);
+  }
+  if (user.role === 'sub_admin') {
+    const visibleIds = [user.id, ...getSubordinateIds(user.id)];
+    return ops.filter(o =>
+      visibleIds.includes(o.created_by) ||
+      (o.sales_id && visibleIds.includes(o.sales_id))
+    );
+  }
+  return ops; // super_admin 看全部
+}
+
 // 工作台数据
 router.get('/dashboard', authMiddleware, (req: Request, res: Response) => {
   const user = (req as any).user;
-  let ops = getOpportunities();
-  if (user.role === 'sales') {
-    ops = ops.filter(o => o.sales_id === user.id);
-  }
+  let ops = filterByRole(getOpportunities(), user);
+
   const total = ops.length;
   const pending = ops.filter(o => o.status === '待跟进').length;
   const success = ops.filter(o => o.status === '成单成功').length;
@@ -33,8 +46,9 @@ router.get('/dashboard', authMiddleware, (req: Request, res: Response) => {
 
 // 统计分析
 router.get('/stats', authMiddleware, adminOnly, (req: Request, res: Response) => {
+  const user = (req as any).user;
   const { period = 'month', salesId = '', industry = '', source = '' } = req.query as any;
-  let ops = getOpportunities();
+  let ops = filterByRole(getOpportunities(), user);
 
   if (salesId) ops = ops.filter(o => o.sales_id === Number(salesId));
   if (industry) ops = ops.filter(o => o.industry === industry);
@@ -74,9 +88,13 @@ router.get('/stats', authMiddleware, adminOnly, (req: Request, res: Response) =>
     });
   }
 
-  // 按销售统计
-  const users = getUsers().filter(u => u.role === 'sales');
-  const bySales = users.map(u => {
+  // 按销售统计（仅显示权限范围内的销售）
+  let salesUsers = getUsers().filter(u => u.role === 'sales');
+  if (user.role === 'sub_admin') {
+    const subIds = getSubordinateIds(user.id);
+    salesUsers = salesUsers.filter(u => subIds.includes(u.id));
+  }
+  const bySales = salesUsers.map(u => {
     const userOps = ops.filter(o => o.sales_id === u.id);
     const userSuccess = userOps.filter(o => o.status === '成单成功').length;
     return {
