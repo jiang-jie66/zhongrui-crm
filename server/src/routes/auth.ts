@@ -5,6 +5,7 @@ import {
   findUserByUsername, createUser, findUserById, getUsers,
   updateUserPassword, deleteUserById, addOperationLog, getOperationLogs,
   getDirectSubordinates, getSubordinateIds, canManageUser,
+  updateUserRole,
   type User, type UserRole
 } from '../db/jsonDb.js';
 
@@ -262,6 +263,62 @@ router.post('/reset-password/:id', authMiddleware, adminOnly, (req: Request, res
     detail: `${roleLabel(operator.role)} ${operator.name} 重置了${roleLabel(targetUser.role)} ${targetUser.name} 的密码`,
   });
   res.json({ code: 0, message: `已成功重置 ${targetUser.name} 的密码` });
+});
+
+// 修改用户权限级别（仅总管理员可用）
+router.put('/role/:id', authMiddleware, superAdminOnly, (req: Request, res: Response) => {
+  const operator = (req as any).user;
+  const targetId = parseInt(req.params.id);
+  const { newRole } = req.body;
+
+  // 校验角色值
+  const validRoles: UserRole[] = ['sub_admin', 'sales'];
+  if (!validRoles.includes(newRole)) {
+    return res.status(400).json({ code: 400, message: '无效的角色值，可选：副管理员、销售' });
+  }
+
+  // 不能修改自己
+  if (targetId === operator.id) {
+    return res.status(400).json({ code: 400, message: '不能修改自己的权限级别' });
+  }
+
+  const targetUser = findUserById(targetId);
+  if (!targetUser) {
+    return res.status(404).json({ code: 404, message: '目标用户不存在' });
+  }
+
+  // 不能修改总管理员
+  if ((targetUser.role as string) === 'super_admin' || (targetUser.role as string) === 'admin') {
+    return res.status(400).json({ code: 400, message: '不能修改总管理员的权限' });
+  }
+
+  // 相同角色无需修改
+  if (targetUser.role === newRole) {
+    return res.status(400).json({ code: 400, message: '该用户已经是此权限级别' });
+  }
+
+  // 执行修改
+  const result = updateUserRole(targetId, newRole);
+  if (!result) {
+    return res.status(500).json({ code: 500, message: '权限修改失败，请重试' });
+  }
+
+  // 记录操作日志
+  addOperationLog({
+    operator_id: operator.id,
+    operator_name: operator.name,
+    operator_role: operator.role,
+    action: '修改权限',
+    target_user_id: targetId,
+    target_user_name: targetUser.name,
+    detail: `${roleLabel(operator.role)} ${operator.name} 将 ${targetUser.name} 的权限从「${roleLabel(result.oldRole)}」修改为「${roleLabel(result.newRole)}」`,
+  });
+
+  res.json({
+    code: 0,
+    message: `已将 ${targetUser.name} 的权限从「${roleLabel(result.oldRole)}」改为「${roleLabel(result.newRole)}」`,
+    data: { oldRole: result.oldRole, newRole: result.newRole },
+  });
 });
 
 // 获取操作日志
