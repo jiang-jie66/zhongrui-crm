@@ -187,6 +187,19 @@ export function updateUserPassword(userId: number, newPassword: string): boolean
   return true;
 }
 
+// 更新用户角色
+export function updateUserRole(userId: number, newRole: UserRole): { oldRole: string; newRole: string } | null {
+  const users = getUsers();
+  const idx = users.findIndex(u => u.id === userId);
+  if (idx === -1) return null;
+  const oldRole = users[idx].role;
+  // 角色降级时：如果从 sub_admin 降为 sales，保持 parent_id 不变（仍归总管理员管）
+  // 如果从 sales 升为 sub_admin，也保持 parent_id 不变
+  users[idx].role = newRole;
+  saveUsers(users);
+  return { oldRole, newRole };
+}
+
 // ============ 操作日志 ============
 export interface OperationLog {
   id: number;
